@@ -34,7 +34,7 @@ const postSchema = {
 
 const Post = mongoose.model("Post", postSchema);
 
-// let posts = [];
+let posts = [];
 const post1 = new Post({
   title: "test",
   content: "contenttest"
@@ -45,22 +45,60 @@ const post2 = new Post({
 });
 
 const defaultPosts = [post1, post2];
-Post.insertMany(defaultPosts, function(err) {
-  if (err) {
-    console.log(err);
-  } else {
-    console.log("Succesfully saved default posts to DB");
-  }
-});
+
 app.get("/", function(req, res) {
   //{}-> find all foundPosts-> will contains all things we found inside the posts collection
   Post.find({}, function(err, foundPosts) {
-    res.render("home", {
-      startingContent: homeStartingContent,
-      posts: foundPosts
+    if (foundPosts.length === 0) {
+      Post.insertMany(defaultPosts, function(err) {
+        if (err) {
+          console.log(err);
+        } else {
+          console.log("Succesfully saved default posts to DB");
+        }
+      });
+      res.redirect("/");
+    } else {
+      res.render("home", {
+        startingContent: homeStartingContent,
+        posts: foundPosts
+      });
+    }
+  });
+});
+
+app.get("/compose", function(req, res) {
+  res.render("compose");
+});
+
+app.post("/compose", function(req, res) {
+  const postTitle = req.body.postTitle;
+  const postContent = req.body.postBody;
+
+  const post = new Post({
+    title: postTitle,
+    content: postContent
+  });
+
+  post.save(function(err) {
+    if (!err) {
+      res.redirect("/");
+    }
+  });
+});
+
+app.get("/posts/:postId", function(req, res) {
+  const requestedPostId = req.params.postId;
+  // compare other titles
+  // loops through each post, save into variable stored Title
+  Post.findOne({ _id: requestedPostId }, function(err, post) {
+    res.render("post", {
+      title: post.title,
+      content: post.content
     });
   });
 });
+
 app.get("/about", function(req, res) {
   res.render("about", {
     aboutContent
@@ -72,37 +110,6 @@ app.get("/contact", function(req, res) {
     contact: contactContent
   });
 });
-
-app.get("/compose", function(req, res) {
-  res.render("compose");
-});
-
-app.post("/compose", function(req, res) {
-  const post = {
-    title: req.body.postTitle,
-    content: req.body.postBody
-  };
-
-  posts.push(post);
-  res.redirect("/");
-});
-
-app.get("/posts/:postName", function(req, res) {
-  const requestedTitle = _.lowerCase(req.params.postName);
-  // compare other titles
-  // loops through each post, save into variable stored Title
-  posts.forEach(function(post) {
-    const storedTitle = _.lowerCase(post.title);
-
-    if (storedTitle === requestedTitle) {
-      res.render("post", {
-        title: post.title,
-        content: post.content
-      });
-    }
-  });
-});
-
 app.listen(3000, function() {
   console.log("Server started on port 3000");
 });
